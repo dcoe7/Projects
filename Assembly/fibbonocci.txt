@@ -1,0 +1,50 @@
+__asm int fibonacci(int x)
+{
+	CMP r0,#0							//check if byte is 0
+	BEQ end								//goto branch end
+	CMP r0,#1							//check if byte is 1
+	BEQ end								//goto branch end
+	CMP r0,#2							//check if byte is 2
+	BEQ end2							//goto branch end2
+
+	MOVS r1,#1						//first v
+	MOVS r2,#2						//second v
+	MOVS r3,#3						//loop variable k
+	MOVS r4,#2						//sum
+	CMP r0,#3
+	BEQ end3
+
+	
+loop
+	CMP r0,r3
+	BEQ sendit	
+	ADDS r4,r1,r2					//add first and second term
+	MOVS r1,r2							//set first term = second term
+	MOVS r2,r4							//set second term = sum
+	ADDS r3,#1						//increment k
+
+	B loop
+sendit	
+	MOVS r0,r4							//move result to r0
+end
+	BX LR 								//return from subroutine
+end2
+	MOVS r0,#1						//fib of 2=1
+	BX LR
+end3
+	MOVS r0,r3
+	BX LR
+}
+
+int main(void)
+{
+	volatile int r;
+	r = fibonacci(10); //55
+	//r = fibonacci(14); //377 
+	//r = fibonacci(20); //6765 
+
+	while(1){}
+	
+	
+}
+

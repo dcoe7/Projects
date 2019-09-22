@@ -1,0 +1,33 @@
+;;method 2
+				MOVS R0, #10
+				MOVS R1, #2
+				MULS R0,R1,R0
+				MOVS R1, #3
+				MULS R0,R1,R0
+				MOVS R1, #4
+				MULS R0,R1,R0	
+				MOVS R1, #5
+				MULS R0,R1,R0	
+				MOVS R1, #6
+				MULS R0,R1,R0	
+				MOVS R1, #7
+				MULS R0,R1,R0	
+				MOVS R1, #8
+				MULS R0,R1,R0	
+				MOVS R1, #9
+				MULS R0,R1,R0
+;;method 1				
+                MOVS R3,#10
+				MOVS R5,#10
+				MOVS R4,#1
+				
+for_begin
+				CMP R4,R3
+				BGE for_end
+				
+				MULS R5,R4,R5
+				
+				ADDS R4,R4,#1 ;;++i
+				
+				B for_begin
+for_end				

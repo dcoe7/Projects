@@ -1,0 +1,1 @@
+The task was to load two stings into a function using pointers. The first string “Hello” was copied byte by byte to an output string. Then the second string “World!” was copied byte by byte to join the first string in the output string expected to read “Hello World!”

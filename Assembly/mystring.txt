@@ -1,0 +1,45 @@
+__asm void my_strcat(const char *src1, const char *src2, char *dst)
+{
+start1
+      
+			LDRB r3,[r0] 	;load src1 into r3			
+			CMP r3,#0	;check if byte is 0
+			BEQ end1	;goto branch end1
+			ADDS r0,#1	;increment src1 pointer			
+			STRB r3,[r2]	;store byte r3 into dst			
+			ADDS r2,#1	;increment dst pointer			
+			B start1	;repeat the start1
+	
+end1
+			MOVS r3,#' ' 	;add a space
+			STRB r3,[r2]	;store r3 into r2
+			ADDS r2,#1	;inrcement dst
+
+start2
+			LDRB r3,[r1]	;load src2 byte into r3
+			CMP r3,#0	;check if byte is 0
+			BEQ end2	;goto branch end2
+			ADDS r1,#1	;increment src2 pointer
+			STRB r3,[r2]	;store byte r3 into dst
+			ADDS r2,#1	;increment dst pointer
+			B start2	;repeat start2
+			
+end2	
+			MOVS r3,#0 	;add null to end of string
+			STRB r3,[r2]	;store r3 into r2
+			
+
+	
+}
+
+int main(void)
+{
+    const char a[] = "HELLO";
+    const char b[] = "WORLD!";
+    char c[20] = "";
+
+    my_strcat(a, b, c);
+		
+    while (1)
+	;
+}

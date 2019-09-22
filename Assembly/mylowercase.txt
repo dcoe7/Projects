@@ -1,0 +1,42 @@
+__asm void my_lowercase(char *oldname,char *temp){
+
+loop
+	
+	LDRB r1,[r0]	// Load byte into r1 from memory pointed to by r0 (str pointer)
+	CMP r1,#0			// Is byte =0?
+	BEQ end				//if = 0 string is over end program
+	
+	CMP r1,#32		//is it a space
+	BEQ keepbyte	//if yes skip
+	
+	CMP r1,#90 		//subtract r1-90
+	BNE makelow		//if negative or =0 goto makelow
+		
+keepbyte
+	STRB r1,[r0]	//move good byte into r2
+	ADDS r2,#1 		//increment new name by 1 byte
+	ADDS r0,#1		//increment old name by 1 byte
+	B loop					//check next byte
+	
+makelow
+	ADDS r1,#32		//add 32 dec to uppercase and make lowercase
+	STRB r1,[r0]	//move good byte into r2
+	ADDS r2,#1 		//increment new name by 1 byte
+	ADDS r0,#1		//increment old name by 1 byte
+	B loop					//check next byte
+
+end
+	BX lr ;
+		// Else return from subroutine
+}
+int main(void)
+{
+    const char a[] = "David Coe";
+		char b[20]="";
+		char c[20]="";
+
+    my_lowercase(a,b,c);
+			
+    while (1)
+	;
+}
