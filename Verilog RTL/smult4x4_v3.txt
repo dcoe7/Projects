@@ -1,0 +1,69 @@
+//David Coe
+//EE278
+//4x4 Signed Multiplier
+//10-1-19
+
+`timescale 1ns / 1ps
+
+module smult4x4 (clk,St,Mplier,Mcand,Prod,done,ACC,pstate);
+    input clk;
+    input St;
+    input [3:0]Mplier;
+    input [3:0]Mcand;
+    output [8:0] Prod;
+    output done;
+    output [8:0] ACC;
+    output [3:0] pstate;
+    
+    reg done;
+    reg [3:0]pstate, nstate;
+    reg [8:0] Prod; 
+    parameter s0=4'b0000, s1=4'b0001, s2=4'b0010, s3=4'b0011, s4=4'b0100, s5=4'b0101, s6=4'b0110, s7=4'b0111, s8=4'b1000, s9=4'b1001, s10=4'b1010;
+    
+    reg [8:0] ACC;   //accumulator
+    wire M;
+    assign M = ACC[0];
+    always @(posedge clk or posedge St)
+        if (St) pstate = s0;
+        else pstate = nstate;
+    always @(pstate)  //state transition
+        case (pstate)
+            s0: nstate=s1;
+            s1: nstate=s2;
+            s2: nstate=s3;
+            s3: nstate=s4;
+            s4: nstate=s5;
+            s5: nstate=s6;
+            s6: begin
+                    if(Mplier[3]) nstate=s7;
+                    else nstate=s8;
+                end
+            s7: nstate=s9;
+            s8: nstate=s9;
+            s9: nstate = s10;
+            s10: nstate=s0; 
+        endcase
+    always @(pstate)  //Output (Action)
+        case (pstate)
+            s0:  begin
+                ACC[8:4] = 5'b00000;
+                ACC[3:0] = Mplier;
+                 end
+            s1:  if(M)ACC[8:4] = ACC[8:4] + {Mcand[3], Mcand};   //ADD
+            s2:  ACC = {ACC[8], ACC[8:1]};                        //SHIFT
+            s3:  if(M)ACC[8:4] = ACC[8:4] + {Mcand[3], Mcand};   //ADD
+            s4:  ACC = {ACC[8], ACC[8:1]};                        //SHIFT
+            s5:  if(M)ACC[8:4] = ACC[8:4] + {Mcand[3], Mcand};   //ADD
+            s6:  ACC = {ACC[8], ACC[8:1]};                        //SHIFT
+            s7:  if(M)ACC[8:4] = ACC[8:4] + {((~Mcand[3:0])+1'b1)>>3, ((~Mcand[3:0])+1'b1)};   //ADD 2's compliment
+            s8:  if(M)ACC[8:4] = ACC[8:4] + {Mcand[3],Mcand};   //ADD    
+            s9:  ACC = {ACC[8], ACC[8:1]};                        //SHIFT
+            s10:
+                begin  
+                    done = 1'b1;
+                    Prod = ACC;
+                end
+        endcase
+endmodule
+
+
