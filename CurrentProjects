@@ -1,0 +1,7 @@
+NNA for OCR (RTL)
+  -Pipelined QP FP Mac
+  -FIR Filter
+  -CNN Accelerator
+Object Recognition (RTL)
+8x40 LED matrix (RTL)
+8x40 LED matrix (C++)  
