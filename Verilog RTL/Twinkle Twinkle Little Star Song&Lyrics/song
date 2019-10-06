@@ -1,0 +1,65 @@
+//Staffs SDK 5-9-2019
+
+#include <stdio.h>
+#include "platform.h"
+#include "xil_printf.h"
+#include "xparameters.h"
+#include "xgpio.h"
+
+#define Input_1 XPAR_GPIO_0_DEVICE_ID	//GPIO 1
+
+void wait(int t);		// Wait a Defined Amount of Time
+
+XGpio Gpio_1;			//Instantiate a Driver Structure for 1 GPIO Pin
+
+int main()
+{	//Variables
+	int word[9]={0x21, 0x14, 0x01, 0x23, 0x07, 0x21, 0x02, 0x2A, 0x35};		//Phonemes
+	int note[35]={5, 5, 3, 3, 4, 4, 3, 2, 2, 1, 1, 0, 0, 5, 3, 3, 2, 2, 1, 1, 0, 3, 3, 2, 2, 1, 1, 0, 5, 5, 3, 3, 4, 4, 3};	//Notes
+	int time[7]={1, 1, 1, 1, 1, 1, 2};	//Note Times in ms
+	int w=(sizeof(word)/sizeof(word[0]));	//Number of Words in Array
+	int n=(sizeof(note)/sizeof(note[0]));	//Number of Notes in Array
+	int t=(sizeof(time)/sizeof(time[0]));	//Number of Times in Array
+	volatile int i=0;	//Note Increment
+	volatile int j=0;	//Note Time Increment
+
+    print("Staffs Test\n");
+    printf("	w=%d, n=%d, t=%d\n",w,n,t);
+
+	//GPIO Interface Setup
+	int Status_1;										//Instantiate Status Flag
+	init_platform();									//Enable Uart & Caches
+	Status_1 = XGpio_Initialize(&Gpio_1, Input_1);		//Initialize
+	if (Status_1 != XST_SUCCESS) {						//Success
+		print("GPIO 1 Initialization Failed\r\n");		//Failure
+		return XST_FAILURE;
+	}
+	XGpio_SetDataDirection(&Gpio_1, 2, ~0x01);			//Set Direction of Pin to Output
+
+	//Song Loop
+	while (1) {
+		XGpio_DiscreteWrite(&Gpio_1, 2, note[i]);	//Play Note
+		if (i==0){
+			print("Start Song\n");
+		}
+		printf("note: %d\n",note[i]);
+		wait(time[j]*290);	//Delay (ms)
+		if(i==35){break;};
+		i++;		//Increment
+		j=(j+1)%t;		//Increment
+	}
+
+	print("Unexpected loop exit\r\n");
+
+    cleanup_platform();
+    return 0;
+}
+// Time delay function in ms
+void wait(int t)
+{
+	int count = 0;
+	while (count < t*100000)
+	{
+		count++;
+	}
+}
