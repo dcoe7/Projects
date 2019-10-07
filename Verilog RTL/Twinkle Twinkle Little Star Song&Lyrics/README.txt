@@ -1,0 +1,1 @@
+The purpose of this exercise was to play Twinkle Twinkle Little Star with notes and lyrics. Notes and Lyrics are sent from song.txt to the RTL in order to play through a headphone jack.
