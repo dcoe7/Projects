@@ -1,0 +1,1 @@
+The purpose of the task was to poll a UART terminal for a 4 digit passcode. The UART terminal was also used to input a passcode. The design acted as a "vault" and displayed the status of the vault in both the uart terminal and the quad seven segment display.

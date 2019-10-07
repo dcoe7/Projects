@@ -1,0 +1,578 @@
+/*	David Coe
+	EE120 Lab
+	Fall 2018
+	Lab7 Parts:1,2,3
+	Backup: "guccifam2.2".txt
+	12-4-2018
+*/
+//Include header files for all drivers
+#include <asf.h>
+#include <stdio.h>
+#include <string.h>
+
+void Simple_Clk_Init(void);
+void Power_Clk_Init(void);
+void PortInit(void);			// Enable Peripheral Multiplexing (PMUX) for SERCOM4 at PA10/11
+void UartInit(void);			// Set Initial Values for Uart Communication
+void write(char *text);			// Print Information to Termite Uart Terminal
+void getkey(void);				// Read Numpad & Write Input to passcode
+void wait(int t);				// Wait a Defined Amount of Time
+void display(int);				// Display 1 Character on 7 Segment Display(7sd)
+void display7(void);			// Display Current Passcode
+void status(void);				// Check if Vault Code is Correct and Print
+void openV(void);				// Display Vault Open Symbol on 7sd
+void closedV(void);				// Display Vault Closed Symbol on 7sd
+
+Port *ports = PORT_INSTS;
+PortGroup *porA;
+PortGroup *porB;
+char pass[5];				// passcode string
+char *passPTR;				// pointer to password
+int max;					// full passcode tracking variable
+
+int main(void)
+{							// initializations
+	Simple_Clk_Init();
+	Power_Clk_Init();
+	PortInit();
+	UartInit();
+	passPTR=&pass;
+	write("Hello World\r\n");	// Test Uart Terminal
+	max=0;
+	Sercom *ser = SERCOM4;
+	SercomUsart *uart = &(ser->USART);	
+	int i=0;
+	while(1)
+	{	
+		getkey();							// intake numpad inputs
+		display7();							// display current passcode
+		if(uart->INTFLAG.bit.RXC==1){		// valid data is ready from serial terminal
+			pass[i]=uart->DATA.bit.DATA;	// write data to pass from serial terminal
+			i = (i+1)%4;					// increment pass array element
+		}
+		uart->INTFLAG.bit.RXS==1;			// done reading data
+	}
+}
+//Vault Status Passcode Check
+void status(void){
+	char correct[4]={'4','5','4','5'};		// correct passcode
+	if(strncmp(correct,pass,4)==0){			// compare input passcode
+		write("OPEN");						// process correct passcode entry
+		write("\r\n");						
+		openV();
+		wait(1000);							
+	}
+	else{									// process closed vault	
+		write("CLOSED");
+		write("\r\n");
+		closedV();
+		wait(1000);
+	}
+}
+//Display a 4 digit unique passcode on 7 segment display
+void display7(void){
+	int LED=1;		// set local wait variable
+	int i;	
+	for(i=0;i<4;i++){		// 4 iteration for loop to take care of 4 segments of 7sd
+		porA->OUTSET.reg = PORT_PA04 | PORT_PA05 | PORT_PA06 | PORT_PA07;	// turn off A,B,C,D	digits
+		porB->OUTSET.reg = PORT_PB00 | PORT_PB01 | PORT_PB02 | PORT_PB03 | PORT_PB04 | PORT_PB05 | PORT_PB06;		// turn off chars
+		if(pass[i]=='0'){
+			// display "0"
+			porB->OUTCLR.reg = PORT_PB00 | PORT_PB01 | PORT_PB02 | PORT_PB03 | PORT_PB04 | PORT_PB05;
+			porB->OUTSET.reg = PORT_PB06 | PORT_PB07;
+		}
+		if(pass[i]=='1'){
+			// display "1"
+			porB->OUTSET.reg = PORT_PB00 | PORT_PB03 | PORT_PB04 | PORT_PB05 | PORT_PB06;
+			porB->OUTCLR.reg = PORT_PB01 | PORT_PB02;
+		}
+		if(pass[i]=='2'){
+			// display "2"
+			porB->OUTSET.reg = PORT_PB02 | PORT_PB05 | PORT_PA07;
+			porB->OUTCLR.reg = PORT_PB00 | PORT_PB01 | PORT_PB03 | PORT_PB04  | PORT_PB06;
+		}
+		if(pass[i]=='3'){
+			// display "3"
+			porB->OUTCLR.reg = PORT_PB00 | PORT_PB01 | PORT_PB02 | PORT_PB03 | PORT_PB06;
+			porB->OUTSET.reg = PORT_PB04 | PORT_PB05 | PORT_PA07;
+		}
+		if(pass[i]=='4'){
+			// display "4"
+			porB->OUTSET.reg = PORT_PB00 | PORT_PB03 | PORT_PB04 | PORT_PB07;
+			porB->OUTCLR.reg = PORT_PB01 | PORT_PB02 | PORT_PB05 | PORT_PB06;
+		}
+		if(pass[i]=='5'){
+			// display "5"
+			porB->OUTSET.reg = PORT_PB01 | PORT_PB04 | PORT_PB07;
+			porB->OUTCLR.reg = PORT_PB00 | PORT_PB02 | PORT_PB03 | PORT_PB05 | PORT_PB06;
+		}
+		if(pass[i]=='6'){
+			// display "6"
+			porB->OUTSET.reg = PORT_PB01 | PORT_PB07;
+			porB->OUTCLR.reg = PORT_PB00 | PORT_PB02 | PORT_PB03 | PORT_PB04 | PORT_PB05 | PORT_PB06;
+		}
+		if(pass[i]=='7'){
+			// display "7"
+			porB->OUTSET.reg = PORT_PB03 | PORT_PB04 | PORT_PB05 | PORT_PB06 | PORT_PB07;
+			porB->OUTCLR.reg = PORT_PB00 | PORT_PB01 | PORT_PB02;
+		}
+		if(pass[i]=='8'){
+			// display "8"
+			porB->OUTCLR.reg = PORT_PB00 | PORT_PB01 | PORT_PB02 | PORT_PB03 | PORT_PB04 | PORT_PB05 | PORT_PB06;
+			porB->OUTSET.reg = PORT_PB07;
+		}
+		if(pass[i]=='9'){
+			// display "9"
+			porB->OUTCLR.reg = PORT_PB00 | PORT_PB01 | PORT_PB02 | PORT_PB05 | PORT_PB06;
+			porB->OUTSET.reg = PORT_PB03 | PORT_PB04 | PORT_PB07;
+		}
+		if(i==0){
+			porA->OUTCLR.reg = PORT_PA07;	// turn on Digit A
+		}
+		if(i==1){
+			porA->OUTCLR.reg = PORT_PA06;	// turn on Digit B
+		}
+		if(i==2){
+			porA->OUTCLR.reg = PORT_PA05;	// turn on Digit C
+		}
+		if(i==3){
+			porA->OUTCLR.reg = PORT_PA04;	// turn on Digit D
+		}
+		wait(LED);		
+	}
+	i=0;
+}
+// Read Numpad & Write Input to passcode
+void getkey(void){
+		int w=500;	// de-bounce time
+		idle:
+		if(max==4){		// if 4 numbers have been entered into pass, reset pointer
+			max=0;
+			passPTR=&pass;
+		}			
+		porA->OUTSET.reg = PORT_PA04 | PORT_PA05 | PORT_PA06 | PORT_PA07;	// turn off A,B,C,D	digits
+		porB->OUTSET.reg = PORT_PB00 | PORT_PB01 | PORT_PB02 | PORT_PB03 | PORT_PB04 | PORT_PB05 | PORT_PB06;		// turn off chars
+//********************row1 check*********************************			
+		porA->OUTCLR.reg = PORT_PA07;							// turn on row 1 keypad
+		porA->OUTSET.reg = PORT_PA06 | PORT_PA05 |PORT_PA04;	// turn off row 2,3,4 keypad
+		// Check if "1" button was pressed					
+		if( porA->IN.reg & PORT_PA19){
+			wait(w);											// debounce
+			if( porA->IN.reg & (1ul << 19)){					// process input
+				display(1);										// display 1 on 7sd
+				write("1 pressed\r\n");							// display latest key press on termite
+				porA->OUTSET.reg = PORT_PA07;					// turn off row 1 keypad
+				*passPTR='1';									// write 1 to pass element
+				passPTR++;										// increment pass for next digit
+				max++;											// increment # keypad entires
+			}
+			else{												// false button press
+				goto idle;
+			};			
+		}
+		// Check if "2" button was pressed
+		if( porA->IN.reg & PORT_PA18){
+			wait(w);
+			if( porA->IN.reg & (1ul << 18)){	//process input
+				display(2);	//display 2 on 7sd
+				write("2 pressed\r\n");	
+				porA->OUTSET.reg = PORT_PA07; //turn off row 1 keypad
+				*passPTR='2';
+				passPTR++;
+				max++;
+			}
+			else{	//false button press
+				goto idle;
+			};			
+		}
+		// Check if "3" button was pressed
+		if( porA->IN.reg & PORT_PA17){
+			wait(w);
+			if( porA->IN.reg & (1ul << 17)){	//process input
+				display(3);	//display 3 on 7sd
+				write("3 pressed\r\n");	
+				porA->OUTSET.reg = PORT_PA07; //turn off row 1 keypad
+				*passPTR='3';
+				passPTR++;
+				max++;
+			}
+			else{	//false button press
+				goto idle;
+			};
+		}
+//*********************row2 check**************************		
+		porA->OUTCLR.reg = PORT_PA06; //turn on row 2 keypad
+		porA->OUTSET.reg = PORT_PA07 | PORT_PA05 |PORT_PA04; //turn off row 1,3,4 keypad
+		// Check if "4" button was pressed					
+		if( porA->IN.reg & PORT_PA19){
+			wait(w);
+			if( porA->IN.reg & (1ul << 19)){	//process input
+				display(4);	//display 4 on 7sd
+				write("4 pressed\r\n");	
+				porA->OUTSET.reg = PORT_PA06; //turn off row 2 keypad
+				*passPTR='4';
+				passPTR++;
+				max++;
+			}
+			else{	//false button press
+				goto idle;
+			};
+		}
+		// Check if "5" button was pressed
+		if( porA->IN.reg & PORT_PA18){
+			wait(w);
+			if( porA->IN.reg & (1ul << 18)){	//process input
+				display(5);	//display 5 on 7sd
+				write("5 pressed\r\n");	
+				porA->OUTSET.reg = PORT_PA06; //turn off row 2 keypad
+				*passPTR='5';
+				passPTR++;
+				max++;
+			}
+			else{	//false button press
+				goto idle;
+			};
+		}
+		// Check if "6" button was pressed
+		if( porA->IN.reg & PORT_PA17){
+			wait(w);
+			if( porA->IN.reg & (1ul << 17)){	//process input
+				display(6);	//display 6 on 7sd
+				write("6 pressed\r\n");	
+				porA->OUTSET.reg = PORT_PA06; //turn off row 2 keypad
+				*passPTR='6';
+				passPTR++;
+				max++;
+			}
+			else{	//false button press
+				goto idle;
+			};
+		}
+//*********************row3 check**************************		
+		porA->OUTCLR.reg = PORT_PA05; //turn on row 3 keypad
+		porA->OUTSET.reg = PORT_PA07 | PORT_PA06 |PORT_PA04; //turn off row 1,2,4 keypad	
+		// Check if "7" button was pressed				
+		if( porA->IN.reg & PORT_PA19){
+			wait(w);
+			if( porA->IN.reg & (1ul << 19)){	//process input
+				display(7);	//display 7 on 7sd
+				write("7 pressed\r\n");	
+				porA->OUTSET.reg = PORT_PA05; //turn off row 3 keypad
+				*passPTR='7';
+				passPTR++;
+				max++;
+			}
+			else{	//false button press
+				goto idle;
+			};
+		}
+		// Check if "8" button was pressed
+		if( porA->IN.reg & PORT_PA18){
+			wait(w);
+			if( porA->IN.reg & (1ul << 18)){	//process input
+				display(8);	//display 8 on 7sd
+				write("8 pressed\r\n");	
+				porA->OUTSET.reg = PORT_PA05; //turn off row 3 keypad
+				*passPTR='8';
+				passPTR++;
+				max++;
+			}
+			else{	//false button press
+				goto idle;
+			};
+		}
+		// Check if "9" button was pressed
+		if( porA->IN.reg & PORT_PA17){
+			wait(w);
+			if( porA->IN.reg & (1ul << 17)){	//process input
+				display(9);	//display 9 on 7sd
+				write("9 pressed\r\n");	
+				porA->OUTSET.reg = PORT_PA05; //turn off row 3 keypad
+				*passPTR='9';
+				passPTR++;
+				max++;
+			}
+			else{	//false button press
+				goto idle;
+			};
+		}						
+//*********************row4 check**************************		
+		porA->OUTCLR.reg = PORT_PA04;							// turn on row 4 keypad
+		porA->OUTSET.reg = PORT_PA07 | PORT_PA06 |PORT_PA05;	// turn off row 1,2,3 keypad
+		// Check if "D" button was pressed					
+		if( porA->IN.reg & PORT_PA16){
+			wait(w);											// de-bounce
+			if( porA->IN.reg & (1ul << 16)){					// process input
+				display(10);									// display '-' on 7sd
+				write(pass);									// write pass to termite terminal
+				write("\r\n");									// make pretty :)
+				porA->OUTSET.reg = PORT_PA04;					// turn off row 4 keypad				
+				passPTR=&pass;									// reset pass pointer to first digit
+				max=0;											// reset passcode element tracker
+				status();										// check if vault is open/closed
+			}
+			else{												// false button press
+				goto idle;
+			};
+		}
+		// Check if "0" button was pressed
+		if( porA->IN.reg & PORT_PA18){
+			wait(w);
+			if( porA->IN.reg & (1ul << 18)){	//process input
+				display(0);	//display 0 on 7sd
+				write("0 pressed\r\n");	
+				porA->OUTSET.reg = PORT_PA04; //turn off row 4 keypad
+				*passPTR='0';
+				passPTR++;
+				max++;
+			}
+			else{	//false button press
+				goto idle;
+			};
+		}		
+}
+//Display a Single Char on 7 Segment Display(7sd)
+void display(int disp){
+	int LED=500;		// immediate input display time during de-bounce "show immediate input once de-bounce is successful"	
+	porA->OUTCLR.reg = PORT_PA04 | PORT_PA05 | PORT_PA06 | PORT_PA07;	// turn on A,B,C,D digits
+	if(disp==0){
+		// display "0"
+		porB->OUTCLR.reg = PORT_PB00 | PORT_PB01 | PORT_PB02 | PORT_PB03 | PORT_PB04 | PORT_PB05;
+		porB->OUTSET.reg = PORT_PB06 | PORT_PB07;
+		wait(LED);
+	}
+	if(disp==1){
+		// display "1"
+		porB->OUTSET.reg = PORT_PB00 | PORT_PB03 | PORT_PB04 | PORT_PB05 | PORT_PB06;
+		porB->OUTCLR.reg = PORT_PB01 | PORT_PB02;
+		wait(LED);
+	}
+	if(disp==2){
+		// display "2"
+		porB->OUTSET.reg = PORT_PB02 | PORT_PB05 | PORT_PA07;
+		porB->OUTCLR.reg = PORT_PB00 | PORT_PB01 | PORT_PB03 | PORT_PB04  | PORT_PB06;
+		wait(LED);
+	}
+	if(disp==3){
+		// display "3"
+		porB->OUTCLR.reg = PORT_PB00 | PORT_PB01 | PORT_PB02 | PORT_PB03 | PORT_PB06;
+		porB->OUTSET.reg = PORT_PB04 | PORT_PB05 | PORT_PA07;
+		wait(LED);
+	}
+	if(disp==4){
+		// display "4"
+		porB->OUTSET.reg = PORT_PB00 | PORT_PB03 | PORT_PB04 | PORT_PB07;
+		porB->OUTCLR.reg = PORT_PB01 | PORT_PB02 | PORT_PB05 | PORT_PB06;
+		wait(LED);
+	}
+	if(disp==5){
+		// display "5"
+		porB->OUTSET.reg = PORT_PB01 | PORT_PB04 | PORT_PB07;
+		porB->OUTCLR.reg = PORT_PB00 | PORT_PB02 | PORT_PB03 | PORT_PB05 | PORT_PB06;
+		wait(LED);
+	}
+	if(disp==6){
+		// display "6"
+		porB->OUTSET.reg = PORT_PB01 | PORT_PB07;
+		porB->OUTCLR.reg = PORT_PB00 | PORT_PB02 | PORT_PB03 | PORT_PB04 | PORT_PB05 | PORT_PB06;
+		wait(LED);
+	}
+	if(disp==7){
+		// display "7"
+		porB->OUTSET.reg = PORT_PB03 | PORT_PB04 | PORT_PB05 | PORT_PB06 | PORT_PB07;
+		porB->OUTCLR.reg = PORT_PB00 | PORT_PB01 | PORT_PB02;
+		wait(LED);
+	}
+	if(disp==8){
+		// display "8"
+		porB->OUTCLR.reg = PORT_PB00 | PORT_PB01 | PORT_PB02 | PORT_PB03 | PORT_PB04 | PORT_PB05 | PORT_PB06;
+		porB->OUTSET.reg = PORT_PB07;
+		wait(LED);
+	}
+	if(disp==9){
+		// display "9"
+		porB->OUTCLR.reg = PORT_PB00 | PORT_PB01 | PORT_PB02 | PORT_PB05 | PORT_PB06;
+		porB->OUTSET.reg = PORT_PB03 | PORT_PB04 | PORT_PB07;
+		wait(LED);
+	}
+	if(disp==10){
+		// display "9"
+		porB->OUTCLR.reg =PORT_PB06;
+		porB->OUTSET.reg = PORT_PB00 | PORT_PB01 | PORT_PB02 | PORT_PB03 |  PORT_PB04 | PORT_PB05 | PORT_PB07;
+		wait(LED);
+	}
+}
+//Display "Open Symbol" on 7sd
+void openV(void){
+		int LED = 1;	// control speed of display
+		int i;
+		for(i=0;i<400;i++){	// improvised wait function to display an output for "400 cycles"
+			porA->OUTSET.reg = PORT_PA04 | PORT_PA05 | PORT_PA06 | PORT_PA07;	// turn off A,B,C,D	digits
+		// display left box end
+			porB->OUTCLR.reg = PORT_PB00 | PORT_PB03 | PORT_PB04 | PORT_PB05;
+			porB->OUTSET.reg = PORT_PB01 | PORT_PB02 | PORT_PB06 | PORT_PB07;
+			porA->OUTCLR.reg = PORT_PA07; //turn on Digit A
+			wait(LED);
+			porA->OUTSET.reg = PORT_PA04 | PORT_PA05 | PORT_PA06 | PORT_PA07;//turn off A,B,C,D	digits
+		// display middle box
+			porB->OUTCLR.reg = PORT_PB00 | PORT_PB03;
+			porB->OUTSET.reg = PORT_PB01 | PORT_PB02 | PORT_PB04 | PORT_PB05 | PORT_PB06 | PORT_PB07;
+			porA->OUTCLR.reg = PORT_PA06; //turn on Digit B
+			wait(LED);
+			porA->OUTSET.reg = PORT_PA04 | PORT_PA05 | PORT_PA06 | PORT_PA07;//turn off A,B,C,D	digits
+		// display middle box
+			porB->OUTCLR.reg = PORT_PB00 | PORT_PB03;
+			porB->OUTSET.reg = PORT_PB01 | PORT_PB02 | PORT_PB04 | PORT_PB05 | PORT_PB06 | PORT_PB07;
+			porA->OUTCLR.reg = PORT_PA05; //turn on Digit C
+			wait(LED);
+			porA->OUTSET.reg = PORT_PA04 | PORT_PA05 | PORT_PA06 | PORT_PA07;//turn off A,B,C,D	digits
+		// display right box end
+			porB->OUTCLR.reg = PORT_PB00 | PORT_PB01 | PORT_PB02 | PORT_PB03;
+			porB->OUTSET.reg = PORT_PB04 | PORT_PB05 | PORT_PB06 | PORT_PB07;
+			porA->OUTCLR.reg = PORT_PA04; //turn on Digit D
+			wait(LED);
+			porA->OUTSET.reg = PORT_PA04 | PORT_PA05 | PORT_PA06 | PORT_PA07;//turn off A,B,C,D	digits
+		}
+}
+
+void closedV(void){
+			porA->OUTSET.reg = PORT_PA04 | PORT_PA05 | PORT_PA06 | PORT_PA07; // turn off A,B,C,D digits
+		// display "H" which means vault is closed like a jail cell
+			porB->OUTCLR.reg = PORT_PB01 | PORT_PB02 | PORT_PB04 | PORT_PB05 | PORT_PB06;
+			porB->OUTSET.reg = PORT_PB00 | PORT_PB03 | PORT_PB07;
+			porA->OUTCLR.reg = PORT_PA04 | PORT_PA05 | PORT_PA06 | PORT_PA07;//turn on A,B,C,D	digits
+}				
+// Time delay function
+void wait(int t)
+{
+	int count = 0;
+	while (count < t*1000)
+	{
+		count++;
+	}
+}
+// Power & GCLK management
+void Power_Clk_Init(void){
+	
+	PM->APBCMASK.reg |= 0x1u << 6; // enable SERCOM4
+	
+	uint32_t temp =0x11 ; // set SERCOM ID
+	temp &= ~(1<<8);		// prep temp to insert a 0 in a register without disturbing other flags 
+	GCLK->CLKCTRL.reg=temp; // write ID to generic clock
+	GCLK->CLKCTRL.reg |= 0x1u << 14;    // enable generic clock but dont disturb other register bits
+	
+}
+// Port initialization
+void PortInit(void)
+{
+	porB = &(ports->Group[1]);	//assign pointer to address of input array 1
+	porA = &(ports->Group[0]);	//assign pointer to address of input array 0	
+	// Setup Port 10 and 11 for SERCOM4
+	// Enable PMUX with the PINCFG register
+	porB->PINCFG[10].bit.PMUXEN = 0x1; //p.330
+	porB->PINCFG[11].bit.PMUXEN = 0x1;	
+	// Enable Peripheral function group for SERCOM4 on PA10/11
+	porB->PMUX[5].bit.PMUXE = 0x3; //PA10 & PA11 p.346,330
+	porB->PMUX[5].bit.PMUXO = 0x3; //was PA11	
+    // Set the direction of Keypad pins to be input
+    porA->DIRCLR.reg = PORT_PA16 | PORT_PA17 | PORT_PA18 | PORT_PA19;
+    porA->OUTSET.reg = PORT_PA16 | PORT_PA17 | PORT_PA18 | PORT_PA19;
+	// Set input enable and pull-up enable for keypad pins
+	porA->PINCFG[16].reg = PORT_PINCFG_INEN | PORT_PINCFG_PULLEN;
+	porA->PINCFG[17].reg = PORT_PINCFG_INEN | PORT_PINCFG_PULLEN;
+	porA->PINCFG[18].reg = PORT_PINCFG_INEN | PORT_PINCFG_PULLEN;
+	porA->PINCFG[19].reg = PORT_PINCFG_INEN | PORT_PINCFG_PULLEN;
+	// Set Direction of 7 seg display to be output
+	porB->DIRSET.reg = PORT_PB00 | PORT_PB01 | PORT_PB02 | PORT_PB03 | PORT_PB04 | PORT_PB05 | PORT_PB06;
+	porA->DIRSET.reg = PORT_PA04 | PORT_PA05 | PORT_PA06 | PORT_PA07;
+	// turn off A,B,C,D digits
+	porA->OUTSET.reg = PORT_PA04 | PORT_PA05 | PORT_PA06 | PORT_PA07;			
+}
+
+// SERCOM4 UART initialization
+void UartInit(void){
+	
+	Sercom *ser = SERCOM4;
+	SercomUsart *uart = &(ser->USART);
+	
+	uart->CTRLA.bit.MODE = 1;	// UART mode with internal clock
+	uart->CTRLA.bit.CMODE = 0;	// Communication mode 1 = synchronous, 0 = asynchronous
+	uart->CTRLA.bit.RXPO = 0x3; // Making pad[3] (PB11) the receive data pin
+	uart->CTRLA.bit.TXPO = 0x1; // Making pad[2] (PB10) the transmit data pin
+	uart->CTRLB.bit.CHSIZE=0x0;	// Set the CTRLB Character Size to 8 bits
+	uart->CTRLA.bit.DORD = 0x1; // Data order set which bit is sent first LSB = 1, MSB = 0
+	uart->CTRLB.bit.SBMODE=0x0; // Set the CTRLB Stop Bit to one stop bit
+	uart->CTRLB.bit.SFDE = 0x1; // Start of Frame Detection Enabled
+	uart->BAUD.reg	=0xFB16;	// Set Baud rate to 0d64278 for a converted rate of 9600Hz
+		
+	while(uart->STATUS.bit.SYNCBUSY == 1){}	
+		
+	uart->CTRLB.bit.RXEN = 0x1;	// Receiver enabled
+	uart->CTRLB.bit.TXEN = 0x1;	// Transmitter enabled	
+	
+	while(uart->STATUS.bit.SYNCBUSY == 1){}	
+		
+	uart->CTRLA.reg |= 0x2; // Enable the UART peripheral
+}
+
+// Write text to data reg
+void write(char *text)
+{
+	Sercom *ser = SERCOM4;
+	SercomUsart *uart = &(ser->USART);
+	
+	char *textPtr;	
+	textPtr = text;		// set pointer to address of print string array
+	
+	while(*textPtr)
+	{
+		while(!(uart->INTFLAG.reg & SERCOM_USART_INTFLAG_DRE)){/*not ready*/}
+			//left while loop^ and ready to read
+						uart->DATA.bit.DATA = *textPtr;
+						textPtr++;
+		while(!(uart->INTFLAG.reg & SERCOM_USART_INTFLAG_TXC)){/*not finished reading*/}
+			//left while loop^ and transmission finished
+	}
+}
+
+// Simple clock initialization	*Do Not Modify*
+void Simple_Clk_Init(void)
+{
+	/* Various bits in the INTFLAG register can be set to one at startup.
+	   This will ensure that these bits are cleared */
+	
+	SYSCTRL->INTFLAG.reg = SYSCTRL_INTFLAG_BOD33RDY | SYSCTRL_INTFLAG_BOD33DET |
+			SYSCTRL_INTFLAG_DFLLRDY;
+			
+	//system_flash_set_waitstates(0);  //Clock_flash wait state =0
+
+	SYSCTRL_OSC8M_Type temp = SYSCTRL->OSC8M;      /* for OSC8M initialization  */
+
+	temp.bit.PRESC    = 0;    // no divide, i.e., set clock=8Mhz  (see page 170)
+	temp.bit.ONDEMAND = 1;    //  On-demand is true
+	temp.bit.RUNSTDBY = 0;    //  Standby is false
+	
+	SYSCTRL->OSC8M = temp;
+
+	SYSCTRL->OSC8M.reg |= 0x1u << 1;  //SYSCTRL_OSC8M_ENABLE bit = bit-1 (page 170)
+	
+	PM->CPUSEL.reg = (uint32_t)0;		// CPU and BUS clocks Divide by 1  (see page 110)
+	PM->APBASEL.reg = (uint32_t)0;		// APBA clock 0= Divide by 1  (see page 110)
+	PM->APBBSEL.reg = (uint32_t)0;		// APBB clock 0= Divide by 1  (see page 110)
+	PM->APBCSEL.reg = (uint32_t)0;		// APBB clock 0= Divide by 1  (see page 110)
+
+	PM->APBAMASK.reg |= 01u<<3;   // Enable Generic clock controller clock (page 127)
+
+	/* Software reset Generic clock to ensure it is re-initialized correctly */
+
+	GCLK->CTRL.reg = 0x1u << 0;   // Reset gen. clock (see page 94)
+	while (GCLK->CTRL.reg & 0x1u ) {  /* Wait for reset to complete */ }
+	
+	// Initialization and enable generic clock #0
+	while (GCLK->STATUS.reg & GCLK_STATUS_SYNCBUSY){}
+	*((uint8_t*)&GCLK->GENDIV.reg) = 0;  // Select GCLK0 (page 104, Table 14-10)
+	while (GCLK->STATUS.reg & GCLK_STATUS_SYNCBUSY){}
+	GCLK->GENDIV.reg  = 0x0100;   		 // Divide by 1 for GCLK #0 (page 104)
+	while (GCLK->STATUS.reg & GCLK_STATUS_SYNCBUSY){}
+	GCLK->GENCTRL.reg = 0x030600;  		 // GCLK#0 enable, Source=6(OSC8M), IDC=1 (page 101)
+}
